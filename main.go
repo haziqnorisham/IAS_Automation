@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	redis_utils "ias/automation/db/redis"
 	ingest_http "ias/automation/ingest/http"
 	"log"
 	"os"
@@ -17,12 +19,29 @@ func main() {
 		log.Fatalf("Error loading .env file: %s", err)
 	}
 
+	// Establish Connection to Redis & test connection.
+	rdb := redis_utils.NewRedisClient()
+	defer rdb.Close()
+
+	ctx := context.Background()
+
+	err = rdb.Set(ctx, "foo", "bar", 0).Err()
+	if err != nil {
+		panic(err)
+	}
+
+	val, err := rdb.Get(ctx, "foo").Result()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("foo", val)
+
 	// Start the HTTP server if autostart is enabled
 	if often := os.Getenv("HTTP_SERVER_AUTOSTART"); often == "true" {
+		ingest_http.SetupRoutes()
 		ingest_http.StartServer()
 	}
 
-	ingest_http.SetupRoutes()
 	for {
 		fmt.Print("\nCommand (start/stop/restart/quit): ")
 		var cmd string
