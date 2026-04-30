@@ -1,4 +1,16 @@
-# Machine Setup
+# IAS Automations
+
+Backend for **IAS_HC** front-end UI. Also data ingest endpoint.
+
+## Stack
+
+- Go
+- PosgresSQL
+- IndluxDB
+- Redis
+- Docker
+
+# Dev Env Setup
 
 ## Specs
 - Architecture: x86-64
