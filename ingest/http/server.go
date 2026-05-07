@@ -1,7 +1,7 @@
 package http
 
 import (
-	"fmt"
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
@@ -24,11 +24,14 @@ func SetupRoutes(rdb *redis_lib.Client) {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			time.Sleep(2 * time.Second)
-			w.Write([]byte("{\"status\": \"OK\", \"delay\": \"2s\"}"))
+			time.Sleep(0 * time.Second)
+			w.Write([]byte("{\"status\": \"OK\", \"delay\": \"0s\"}"))
 		})
 		http.HandleFunc("/api/get_all_devices", func(w http.ResponseWriter, r *http.Request) {
 			GetAllDevices(w, r)
+		})
+		http.HandleFunc("/api/get_raw_ingest", func(w http.ResponseWriter, r *http.Request) {
+			GetRawIngest(w, r)
 		})
 	}
 	http.HandleFunc("/GET_ALL_TREE_SENSOR", func(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +54,7 @@ func StartServer() {
 	currentServer = &http.Server{Addr: ":" + os.Getenv("HTTP_SERVER_PORT")}
 	go func() {
 		IsRunning = true
-		fmt.Println("Server started on " + currentServer.Addr)
+		slog.Info("Server started on "+currentServer.Addr, "address", currentServer.Addr, "process", "main")
 		if err := currentServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("HTTP server error", "error", err)
 		}
@@ -60,9 +63,14 @@ func StartServer() {
 }
 
 func StopServer() {
-	if currentServer != nil {
-		currentServer.Close()
-		IsRunning = false
-		fmt.Println("Server stopped")
+	if currentServer == nil {
+		return
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := currentServer.Shutdown(ctx); err != nil {
+		slog.Error("HTTP server forced shutdown", "error", err)
+	}
+	IsRunning = false
+	slog.Info("HTTP server stopped gracefully")
 }
